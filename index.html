@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Protocol Behavior Analysis under Different Applications</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400">
+                <i data-lucide="network" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
+                    Network Protocol Behavior Analysis
+                </h1>
+                <p class="text-xs text-slate-400">Evaluating TCP, UDP, QUIC, WebSocket & MQTT across diverse Application Workloads</p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+            <button class="nav-tab-btn active" data-tab="tab-simulator">
+                <i data-lucide="play-circle" class="w-4 h-4"></i> Live Simulator
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-comparative">
+                <i data-lucide="columns" class="w-4 h-4"></i> Dual Benchmark
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-pcap">
+                <i data-lucide="file-search" class="w-4 h-4"></i> Wireshark & Crafter
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-deepdive">
+                <i data-lucide="book-open" class="w-4 h-4"></i> Protocol Specs
+            </button>
+        </nav>
+
+        <div class="flex items-center gap-2">
+            <button id="btnExportCSV" class="btn-secondary text-xs py-1.5 px-3">
+                📥 CSV Logs
+            </button>
+            <button id="btnExportJSON" class="btn-secondary text-xs py-1.5 px-3">
+                📄 JSON Report
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+
+        <!-- TAB 1: LIVE SIMULATOR & ANALYTICS STUDIO -->
+        <div id="tab-simulator" class="tab-content space-y-6">
+            
+            <!-- Controls & Topology Canvas Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left Sidebar: Configuration Controls -->
+                <div class="glass-panel p-6 space-y-4 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <i data-lucide="sliders" class="w-4 h-4 text-cyan-400"></i> Simulation Parameters
+                        </h2>
+
+                        <!-- Application Selection -->
+                        <div class="space-y-1 mb-3">
+                            <label class="text-xs font-medium text-slate-400">Application Workload</label>
+                            <select id="selectApplication" class="w-full select-dark text-xs">
+                                <option value="web_browsing">Web Browsing (HTTP/1.1 - HTTP/3)</option>
+                                <option value="video_streaming" selected>4K Video Streaming (DASH/HLS)</option>
+                                <option value="gaming_voip">Real-Time Gaming & VoIP</option>
+                                <option value="file_transfer">High-Speed File Transfer (FTP)</option>
+                                <option value="iot_telemetry">IoT Sensor Telemetry (MQTT)</option>
+                            </select>
+                            <p id="textAppDesc" class="text-[11px] text-slate-500 leading-normal"></p>
+                        </div>
+
+                        <!-- Protocol Selection -->
+                        <div class="space-y-1 mb-3">
+                            <label class="text-xs font-medium text-slate-400">Transport Protocol</label>
+                            <select id="selectProtocol" class="w-full select-dark text-xs">
+                                <option value="tcp" selected>TCP (Transmission Control Protocol)</option>
+                                <option value="udp">UDP (User Datagram Protocol)</option>
+                                <option value="quic">QUIC / HTTP/3 (UDP-based Multiplexed)</option>
+                                <option value="websocket">WebSocket over TCP</option>
+                                <option value="mqtt">MQTT over TCP (QoS 1)</option>
+                            </select>
+                            <p id="textProtoDesc" class="text-[11px] text-slate-500 leading-normal"></p>
+                        </div>
+
+                        <!-- Network Topology Selection -->
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Network Topology</label>
+                                <select id="selectTopology" class="w-full select-dark text-xs">
+                                    <option value="standard" selected>Single-Hop LAN/WAN</option>
+                                    <option value="multi_hop">Multi-Hop Enterprise</option>
+                                    <option value="satellite">GEO Satellite (High RTT)</option>
+                                    <option value="cellular_5g">5G Mobile Cellular</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Congestion Alg</label>
+                                <select id="selectCongestionAlg" class="w-full select-dark text-xs">
+                                    <option value="cubic" selected>TCP Cubic (Default)</option>
+                                    <option value="reno">TCP Reno (AIMD)</option>
+                                    <option value="bbr">Google BBR (Bandwidth/RTT)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Queue Management Policy -->
+                        <div class="space-y-1 mb-3">
+                            <label class="text-xs font-medium text-slate-400">Router Buffer Queue Policy</label>
+                            <select id="selectQueuePolicy" class="w-full select-dark text-xs">
+                                <option value="droptail" selected>FIFO DropTail (Tail Drop Overflow)</option>
+                                <option value="red">RED (Random Early Detection)</option>
+                            </select>
+                        </div>
+
+                        <hr class="border-slate-800 my-3">
+
+                        <!-- Network Impairment Sliders -->
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-400">Packet Loss Rate</span>
+                                    <span id="valLoss" class="font-mono text-rose-400">2.0%</span>
+                                </div>
+                                <input id="rangeLoss" type="range" min="0" max="20" step="0.5" value="2" class="custom-range">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-400">Base RTT (Latency)</span>
+                                    <span id="valRTT" class="font-mono text-cyan-400">50 ms</span>
+                                </div>
+                                <input id="rangeRTT" type="range" min="5" max="300" step="5" value="50" class="custom-range">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-slate-400">Jitter Variance</span>
+                                    <span id="valJitter" class="font-mono text-amber-400">5 ms</span>
+                                </div>
+                                <input id="rangeJitter" type="range" min="0" max="50" step="1" value="5" class="custom-range">
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Impairment Trigger Buttons -->
+                        <div class="mt-4 pt-3 border-t border-slate-800">
+                            <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Inject Network Impairments</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button id="btnSpikeLoss" class="btn-secondary text-[11px] py-1.5 px-2 text-rose-400 border-rose-500/30">⚡ Loss Burst</button>
+                                <button id="btnSpikeRTT" class="btn-secondary text-[11px] py-1.5 px-2 text-cyan-400 border-cyan-500/30">🐢 RTT Spike</button>
+                                <button id="btnSpikeCongest" class="btn-secondary text-[11px] py-1.5 px-2 text-amber-400 border-amber-500/30">🚦 Buffer Overflow</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-3 pt-3">
+                        <button id="btnStartSim" class="btn-primary flex-1 text-xs">
+                            ▶ Start Simulation
+                        </button>
+                        <button id="btnResetSim" class="btn-secondary text-xs">
+                            🔄 Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right 2 Columns: Animated Topology Visualizer -->
+                <div class="lg:col-span-2 glass-panel p-6 flex flex-col justify-between space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+                            <h3 class="text-sm font-semibold text-slate-200">Network Topology & Real-Time Packet Flow</h3>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="badge badge-cyan">DATA</span>
+                            <span class="badge badge-emerald">ACK</span>
+                            <span class="badge badge-amber">RETX</span>
+                            <span class="badge badge-rose">DROP</span>
+                        </div>
+                    </div>
+
+                    <!-- HTML5 60fps Canvas -->
+                    <div class="relative w-full h-[300px] bg-slate-950/80 rounded-xl border border-slate-800/80 overflow-hidden flex items-center justify-center">
+                        <canvas id="canvasMainVisualizer" class="w-full h-full"></canvas>
+                    </div>
+
+                    <!-- Summary Cards Bar -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        <div class="metric-card">
+                            <span class="text-[11px] text-slate-400">Throughput</span>
+                            <span id="metricThroughput" class="metric-value text-cyan-400">0.00 Mbps</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="text-[11px] text-slate-400">Goodput</span>
+                            <span id="metricGoodput" class="metric-value text-emerald-400">0.00 Mbps</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="text-[11px] text-slate-400">Packet Loss</span>
+                            <span id="metricLoss" class="metric-value text-rose-400">0 (0%)</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="text-[11px] text-slate-400">Retransmissions</span>
+                            <span id="metricRetx" class="metric-value text-amber-400">0</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="text-[11px] text-slate-400">Window (cwnd)</span>
+                            <span id="metricCwnd" class="metric-value text-purple-400">4 MSS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Chart Analytics Dashboard -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-panel p-5 space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Throughput vs Payload Goodput</h4>
+                    <div class="h-[200px]">
+                        <canvas id="chartThroughput"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">RTT Latency & Congestion Window</h4>
+                    <div class="h-[200px]">
+                        <canvas id="chartLatency"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Packet Loss Rate & Playback Buffer</h4>
+                    <div class="h-[200px]">
+                        <canvas id="chartLossBuffer"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Packet Event Stream Table -->
+            <div class="glass-panel p-5 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="terminal" class="w-4 h-4 text-cyan-400"></i> Live Packet Event Console
+                    </h4>
+                    <span class="text-xs text-slate-500 font-mono">Real-time trace logs</span>
+                </div>
+
+                <div class="log-stream-container bg-slate-950/90 rounded-xl border border-slate-800/80">
+                    <div id="logStreamBody" class="divide-y divide-slate-900">
+                        <div class="p-4 text-center text-xs text-slate-500">Press "Start Simulation" to capture packet events.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SPLIT-SCREEN COMPARATIVE BENCHMARK -->
+        <div id="tab-comparative" class="tab-content hidden space-y-6">
+            <div class="glass-panel p-6 space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100">Dual Protocol Benchmark Comparison</h2>
+                        <p class="text-xs text-slate-400">Execute two protocols simultaneously under identical network degradation to observe behavior differences.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button id="btnStartComp" class="btn-primary text-xs">▶ Run Dual Simulation</button>
+                        <button id="btnResetComp" class="btn-secondary text-xs">🔄 Reset Both</button>
+                    </div>
+                </div>
+
+                <!-- Shared Controls Bar -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Target Application</label>
+                        <select id="selectCompApp" class="w-full select-dark text-xs">
+                            <option value="video_streaming">4K Video Streaming</option>
+                            <option value="web_browsing">Web Browsing</option>
+                            <option value="gaming_voip">Real-Time Gaming</option>
+                            <option value="file_transfer">File Transfer</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Protocol A</label>
+                        <select id="selectCompProtoA" class="w-full select-dark text-xs">
+                            <option value="tcp" selected>TCP (Reno/Cubic)</option>
+                            <option value="udp">UDP Datagrams</option>
+                            <option value="quic">QUIC / HTTP/3</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Protocol B</label>
+                        <select id="selectCompProtoB" class="w-full select-dark text-xs">
+                            <option value="udp" selected>UDP Datagrams</option>
+                            <option value="tcp">TCP (Reno/Cubic)</option>
+                            <option value="quic">QUIC / HTTP/3</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Packet Loss Rate</label>
+                        <input id="rangeCompLoss" type="range" min="0" max="15" step="1" value="5" class="custom-range mt-2">
+                    </div>
+                </div>
+
+                <!-- Dual Visualizer Canvases -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-cyan-400">Simulation A (Protocol A)</span>
+                            <span id="compTpA" class="font-mono text-xs text-slate-300">0.00 Mbps</span>
+                        </div>
+                        <div class="h-[220px] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                            <canvas id="canvasCompA" class="w-full h-full"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-purple-400">Simulation B (Protocol B)</span>
+                            <span id="compTpB" class="font-mono text-xs text-slate-300">0.00 Mbps</span>
+                        </div>
+                        <div class="h-[220px] bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                            <canvas id="canvasCompB" class="w-full h-full"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Benchmark Summary Verdict -->
+                <div class="bg-cyan-950/20 border border-cyan-500/30 p-4 rounded-xl text-xs text-slate-300 space-y-2">
+                    <strong class="text-cyan-400 uppercase font-mono tracking-wider block">Analytical Performance Verdict</strong>
+                    <p id="compVerdictText" class="leading-relaxed">Click "Run Dual Simulation" to compare performance metrics side-by-side.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: WIRESHARK PCAP TRACE ANALYZER & PACKET CRAFTER -->
+        <div id="tab-pcap" class="tab-content hidden space-y-6">
+            <div class="glass-panel p-6 space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-100">Wireshark Packet Inspector & Custom Packet Crafter</h2>
+                        <p class="text-xs text-slate-400">Inspect real-world network packet traces frame-by-frame or craft custom packets with custom hex encodings.</p>
+                    </div>
+                    <div>
+                        <select id="pcapSelect" class="select-dark text-xs min-w-[280px]">
+                            <!-- Options injected dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Packet Crafter Form -->
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <h3 class="text-xs font-semibold text-cyan-400 uppercase font-mono tracking-wider">🛠️ Custom Packet Crafter</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
+                        <div>
+                            <label class="text-slate-400 block mb-1">Protocol</label>
+                            <select id="craftProto" class="w-full select-dark text-xs py-1.5">
+                                <option value="TCP">TCP</option>
+                                <option value="UDP">UDP</option>
+                                <option value="QUIC">QUIC</option>
+                                <option value="MQTT">MQTT</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-slate-400 block mb-1">Source IP</label>
+                            <input id="craftSrc" type="text" value="192.168.1.100" class="w-full select-dark text-xs py-1.5">
+                        </div>
+                        <div>
+                            <label class="text-slate-400 block mb-1">Destination IP</label>
+                            <input id="craftDst" type="text" value="10.0.0.1" class="w-full select-dark text-xs py-1.5">
+                        </div>
+                        <div>
+                            <label class="text-slate-400 block mb-1">TCP Flags</label>
+                            <input id="craftFlags" type="text" value="[PSH, ACK]" class="w-full select-dark text-xs py-1.5">
+                        </div>
+                        <div class="flex items-end">
+                            <button id="btnCraftPacket" class="btn-primary w-full text-xs py-1.5">
+                                ⚡ Inject Packet
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Payload Content String</label>
+                        <input id="craftPayload" type="text" value="GET /api/v1/sensor/telemetry HTTP/1.1" class="w-full select-dark text-xs font-mono py-1.5">
+                    </div>
+                </div>
+
+                <!-- Packet List Table -->
+                <div class="overflow-x-auto bg-slate-950 rounded-xl border border-slate-800 max-h-[300px]">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-slate-900 text-slate-400 sticky top-0 border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">No.</th>
+                                <th class="p-3">Time</th>
+                                <th class="p-3">Source → Destination</th>
+                                <th class="p-3">Protocol</th>
+                                <th class="p-3">Length</th>
+                                <th class="p-3">Info</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pcapTableBody" class="divide-y divide-slate-900">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Layer Dissector & Hex View -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <h4 class="text-xs font-semibold text-cyan-400 font-mono">Packet Header Dissector Tree</h4>
+                        <div id="pcapDetailsPane" class="min-h-[160px]">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                        <h4 class="text-xs font-semibold text-purple-400 font-mono">Hexadecimal Payload Dump</h4>
+                        <div id="pcapHexPane" class="min-h-[160px]">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: PROTOCOL KNOWLEDGE BASE -->
+        <div id="tab-deepdive" class="tab-content hidden space-y-6">
+            <div class="space-y-4">
+                <h2 class="text-base font-bold text-slate-100">Network Protocol Technical Specifications</h2>
+                <div id="protocolDeepDiveContainer" class="grid grid-cols-1 gap-6">
+                    <!-- Injected dynamically -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950/60 py-4 px-6 text-center text-xs text-slate-500">
+        Network Protocol Behavior Analysis under Different Applications &bull; Powered by Interactive Simulation Engine
+    </footer>
+
+    <!-- App Module Script -->
+    <script type="module" src="js/app.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>
